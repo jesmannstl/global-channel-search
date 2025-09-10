@@ -1,0 +1,34 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Cache and working directories
+cache/
+data/
+
+# Development Tools
+tools
+
+# Previous versions
+previous_versions/
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Editor files
+*~
+.vscode/
+.idea/
+.*.swp
+.*.swo
+
+# Base cache build files
+sampled_markets_base_cache.csv
+dev_tools
+dev_backups
+
+# Documentation and development tracking
+docs/
+roadmap.md
