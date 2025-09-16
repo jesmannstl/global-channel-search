@@ -30,10 +30,6 @@ setup_config() {
       EMBY_ENABLED=${EMBY_ENABLED:-false}
       EMBY_API_KEY=${EMBY_API_KEY:-""}
       EMBY_USER_ID=${EMBY_USER_ID:-""}
-
-      # Set defaults for Gemini settings
-      GEMINI_ENABLED=${GEMINI_ENABLED:-false}
-      GEMINI_API_KEY=${GEMINI_API_KEY:-""}
       
       # Logging settings
       LOG_LEVEL=${LOG_LEVEL:-"INFO"}

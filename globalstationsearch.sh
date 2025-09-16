@@ -181,7 +181,6 @@ load_remaining_modules() {
         "lib/core/cache.sh|Cache Management Module|true"
         "lib/integrations/dispatcharr.sh|Enhanced Dispatcharr Integration|true"
         "lib/integrations/emby.sh|Emby Server Integration|true"
-        "lib/integrations/gemini.sh|Gemini AI Integration|true"
         "lib/integrations/cdvr.sh|Channels DVR Integration|true"
         "lib/core/search.sh|Search and Filtering Utilities|true"
         "lib/core/database.sh|Database Operations|true"
@@ -1122,99 +1121,6 @@ scan_emby_missing_listingsids() {
 }
 
 # ============================================================================
-# GEMINI INTEGRATION FUNCTIONS
-# ============================================================================
-
-configure_gemini_integration() {
-    clear
-    echo -e "${BOLD}${CYAN}=== Configure Gemini Integration ===${RESET}\n"
-
-    if [[ "$GEMINI_ENABLED" == "true" ]]; then
-        # --- ENABLED MENU ---
-        echo -e "${BOLD}Current Status: ${GREEN}Enabled${RESET}"
-        [[ -n "$GEMINI_API_KEY" ]] && echo -e "API Key: ${CYAN}Set${RESET}" || echo -e "API Key: ${YELLOW}Not Set${RESET}"
-        echo
-        echo -e "${BOLD}Options:${RESET}"
-        echo -e "1) Change API Key"
-        echo -e "2) Disable Gemini AI Search"
-        echo -e "3) Cancel"
-
-        local choice
-        read -p "Select option [3]: " choice
-        choice=${choice:-3}
-
-        case "$choice" in
-            1) # Change API Key
-                prompt_for_and_test_gemini_key
-                ;;
-            2) # Disable
-                save_setting "GEMINI_ENABLED" "false"
-                save_setting "GEMINI_API_KEY" ""
-                GEMINI_ENABLED=false
-                GEMINI_API_KEY=""
-                echo -e "${YELLOW}✅ Gemini AI Search disabled.${RESET}"
-                ;;
-            *) # Cancel
-                echo -e "${CYAN}💡 No changes made.${RESET}"
-                ;;
-        esac
-    else
-        # --- DISABLED MENU ---
-        echo -e "${BOLD}Current Status: ${YELLOW}Disabled${RESET}"
-        echo
-        echo -e "${BOLD}Options:${RESET}"
-        echo -e "1) Enable Gemini AI Search"
-        echo -e "2) Cancel"
-
-        local choice
-        read -p "Select option [2]: " choice
-        choice=${choice:-2}
-
-        case "$choice" in
-            1) # Enable
-                save_setting "GEMINI_ENABLED" "true"
-                GEMINI_ENABLED=true
-                echo -e "${GREEN}✅ Gemini AI Search enabled.${RESET}"
-                prompt_for_and_test_gemini_key
-                ;;
-            *) # Cancel
-                echo -e "${CYAN}💡 No changes made.${RESET}"
-                ;;
-        esac
-    fi
-
-    echo -e "\n${GREEN}✅ Gemini configuration process finished.${RESET}"
-}
-
-prompt_for_and_test_gemini_key() {
-    echo
-    echo -e "${BOLD}API Key Configuration${RESET}"
-    echo -e "${CYAN}Please enter your Google Gemini API Key.${RESET}"
-
-    local temp_api_key
-    read -s -p "Enter API Key: " temp_api_key
-    echo
-
-    if [[ -n "$temp_api_key" ]]; then
-        save_setting "GEMINI_API_KEY" "$temp_api_key"
-        GEMINI_API_KEY="$temp_api_key" # Update global var for current session
-
-        echo
-        echo -e "${CYAN}🔄 Testing Gemini connection...${RESET}"
-        if gemini_test_connection; then
-            echo -e "${GREEN}✅ Connection test successful! API Key is valid.${RESET}"
-        else
-            echo -e "${RED}❌ Connection test failed. The API key may be invalid.${RESET}"
-        fi
-    else
-        echo -e "${YELLOW}⚠️  No API Key entered. The existing key (if any) has been cleared.${RESET}"
-        save_setting "GEMINI_API_KEY" ""
-        GEMINI_API_KEY=""
-    fi
-}
-
-
-# ============================================================================
 # DISPATCHARR INTEGRATION FUNCTIONS
 # ============================================================================
 
@@ -1697,7 +1603,6 @@ process_single_channel_station_id() {
       [[ $current_page -lt $total_pages ]] && echo "n) Next page"
       [[ $current_page -gt 1 ]] && echo "p) Previous page"
       echo "s) Search with different term"
-      echo "i) Search with AI"
       echo "m) Enter station ID manually"
       echo "k) Skip this channel (return to scan results)"
       echo "q) Cancel and return to Dispatcharr menu"
@@ -1778,29 +1683,6 @@ process_single_channel_station_id() {
             detected_country=""
             detected_resolution=""
             echo -e "${CYAN}💡 Auto-detected filters cleared for manual search${RESET}"
-          fi
-          ;;
-        i|I)
-          if ! is_gemini_configured; then
-              echo -e "${RED}❌ Gemini is not configured. Please configure it in the Settings menu.${RESET}"
-              pause_for_user
-          else
-              local ai_query
-              read -p "Enter your AI search query [default: $channel_name]: " ai_query
-              ai_query=${ai_query:-$channel_name}
-
-              local ai_params
-              ai_params=$(gemini_ai_search_parser "$ai_query")
-              if [[ $? -eq 0 ]]; then
-                  search_term=$(echo "$ai_params" | jq -r '.search_term // empty')
-                  detected_resolution=$(echo "$ai_params" | jq -r '.quality // empty')
-                  detected_country=$(echo "$ai_params" | jq -r '.country // empty')
-                  echo -e "${GREEN}✅ AI search parameters applied. Re-running search...${RESET}"
-                  current_page=1
-              else
-                  echo -e "${RED}❌ AI search failed.${RESET}"
-                  pause_for_user
-              fi
           fi
           ;;
         m|M)
@@ -2071,7 +1953,6 @@ interactive_stationid_matching() {
         [[ $current_page -lt $total_pages ]] && echo "n) Next page"
         [[ $current_page -gt 1 ]] && echo "p) Previous page"
         echo "s) Search with different term"
-        echo "i) Search with AI"
         echo "m) Enter station ID manually"
         echo "k) Skip this channel"
         echo "q) Quit matching (or press Enter)"
@@ -2163,29 +2044,6 @@ interactive_stationid_matching() {
               detected_country=""
               detected_resolution=""
               echo -e "${CYAN}💡 Auto-detected filters cleared for manual search${RESET}"
-            fi
-            ;;
-          i|I)
-            if ! is_gemini_configured; then
-                echo -e "${RED}❌ Gemini is not configured. Please configure it in the Settings menu.${RESET}"
-                pause_for_user
-            else
-                local ai_query
-                read -p "Enter your AI search query [default: $channel_name]: " ai_query
-                ai_query=${ai_query:-$channel_name}
-
-                local ai_params
-                ai_params=$(gemini_ai_search_parser "$ai_query")
-                if [[ $? -eq 0 ]]; then
-                    search_term=$(echo "$ai_params" | jq -r '.search_term // empty')
-                    detected_resolution=$(echo "$ai_params" | jq -r '.quality // empty')
-                    detected_country=$(echo "$ai_params" | jq -r '.country // empty')
-                    echo -e "${GREEN}✅ AI search parameters applied. Re-running search...${RESET}"
-                    current_page=1
-                else
-                    echo -e "${RED}❌ AI search failed.${RESET}"
-                    pause_for_user
-                fi
             fi
             ;;
           m|M)
@@ -4414,103 +4272,6 @@ run_dispatcharr_integration() {
   done
 }
 
-run_automatic_ai_matching() {
-    if ! check_integration_requirement "Gemini" "is_gemini_configured" "configure_gemini_integration" "Automatic AI Matching"; then
-        return 1
-    fi
-    if ! check_integration_requirement "Dispatcharr" "is_dispatcharr_configured" "configure_dispatcharr_connection" "Automatic AI Matching"; then
-        return 1
-    fi
-
-    clear
-    echo -e "${BOLD}${CYAN}=== Automatic AI Station ID Matching ===${RESET}\n"
-    echo -e "${BLUE}📍 This will attempt to automatically match all channels missing a station ID.${RESET}"
-    echo -e "${CYAN}It uses the Gemini AI to find high-confidence (single result) matches.${RESET}"
-    echo -e "${YELLOW}Channels with ambiguous (zero or multiple) matches will be skipped.${RESET}"
-    echo
-
-    echo -e "${CYAN}🔍 Finding channels missing station IDs...${RESET}"
-    local channels_data=$(get_and_cache_dispatcharr_channels)
-    local missing_channels=$(find_channels_missing_stationid "$channels_data")
-
-    if [[ -z "$missing_channels" ]]; then
-        echo -e "${GREEN}✅ No channels are missing station IDs. Nothing to do!${RESET}"
-        return 0
-    fi
-
-    mapfile -t missing_array <<< "$missing_channels"
-    local total_missing=${#missing_array[@]}
-
-    echo -e "${GREEN}✅ Found $total_missing channels to process.${RESET}"
-    if ! confirm_action "Start the automatic matching process?"; then
-        echo -e "${YELLOW}⚠️ Operation cancelled.${RESET}"
-        return 1
-    fi
-
-    local success_count=0
-    local skipped_count=0
-    local failed_count=0
-    local processed_count=0
-
-    echo
-
-    for channel_line in "${missing_array[@]}"; do
-        ((processed_count++))
-
-        IFS=$'\t' read -r channel_id channel_name group number <<< "$channel_line"
-
-        echo -ne "\r${CYAN}Processing $processed_count of $total_missing: ${channel_name:0:40}...${RESET}"
-
-        local ai_params
-        ai_params=$(gemini_ai_search_parser "$channel_name")
-        if [[ $? -ne 0 ]]; then
-            ((failed_count++))
-            continue
-        fi
-
-        local search_term=$(echo "$ai_params" | jq -r '.search_term // empty')
-        local quality=$(echo "$ai_params" | jq -r '.quality // empty')
-        local country=$(echo "$ai_params" | jq -r '.country // empty')
-
-        local result_count
-        result_count=$(shared_station_search "$search_term" 1 "count" "$country" "$quality")
-
-        if [[ "$result_count" -eq 1 ]]; then
-            local station_data=$(shared_station_search "$search_term" 1 "full" "$country" "$quality")
-            local station_id=$(echo "$station_data" | cut -f4)
-
-            if update_dispatcharr_channel_station_id "$channel_id" "$station_id"; then
-                ((success_count++))
-            else
-                ((failed_count++))
-            fi
-        else
-            ((skipped_count++))
-        fi
-        sleep 0.5 # To avoid hitting API rate limits
-    done
-
-    echo # Newline after progress bar
-    display_ai_matching_summary "$success_count" "$skipped_count" "$failed_count" "$total_missing"
-}
-
-display_ai_matching_summary() {
-    local success="$1"
-    local skipped="$2"
-    local failed="$3"
-    local total="$4"
-
-    echo
-    echo -e "${BOLD}${BLUE}=== Automatic AI Matching Complete ===${RESET}"
-    echo
-    echo -e "${CYAN}📊 Processed $total total channels.${RESET}"
-    echo -e "${GREEN}✅ Successfully matched: $success${RESET}"
-    echo -e "${YELLOW}⚠️  Skipped (ambiguous matches): $skipped${RESET}"
-    echo -e "${RED}❌ Failed (API or other errors): $failed${RESET}"
-    echo
-    echo -e "${CYAN}💡 The remaining $skipped skipped channels can be processed using 'Interactive Station ID Matching'.${RESET}"
-}
-
 # Station ID matching submenu handler
 run_dispatcharr_stationid_menu() {
   while true; do
@@ -4527,11 +4288,7 @@ run_dispatcharr_stationid_menu() {
         show_menu_transition "starting" "interactive matching"
         interactive_stationid_matching 
         ;;
-      c|C)
-        show_menu_transition "starting" "automatic AI station ID matching"
-        run_automatic_ai_matching && pause_for_user
-        ;;
-      d|D)
+      c|C) 
         show_menu_transition "starting" "station ID changes processing"
         batch_update_stationids && pause_for_user 
         ;;
@@ -5820,7 +5577,7 @@ simple_update_check() {
     # Display version information
     echo -e "${BOLD}Version Information:${RESET}"
     echo -e "Current Version: ${GREEN}v$VERSION${RESET}"
-    echo -e "Repository URL: ${CYAN}https://github.com/egyptiangio/global-channel-search${RESET}"
+    echo -e "Repository URL: ${CYAN}https://github.com/jesmannstl/global-channel-search${RESET}"
     echo
     
     echo -e "${CYAN}🔄 Checking for repository updates...${RESET}"
@@ -5833,11 +5590,11 @@ simple_update_check() {
         echo -e "${CYAN}If you did not install using git clone, please update using the same method as your original installation.${RESET}"
         echo
         echo -e "${BOLD}To install via git:${RESET}"
-        echo -e "${GREEN}git clone https://github.com/egyptiangio/global-channel-search${RESET}"
+        echo -e "${GREEN}git clone https://github.com/jesmannstl/global-channel-search${RESET}"
         echo
         echo -e "${BOLD}Alternative download methods:${RESET}"
-        echo -e "• Download ZIP: ${CYAN}https://github.com/egyptiangio/global-channel-search/archive/refs/heads/main.zip${RESET}"
-        echo -e "• View releases: ${CYAN}https://github.com/egyptiangio/global-channel-search/releases${RESET}"
+        echo -e "• Download ZIP: ${CYAN}https://github.com/jesmannstl/global-channel-search/archive/refs/heads/main.zip${RESET}"
+        echo -e "• View releases: ${CYAN}https://github.com/jesmannstl/global-channel-search/releases${RESET}"
         return 1
     fi
     
@@ -6667,10 +6424,6 @@ is_emby_configured() {
     [[ "$EMBY_ENABLED" == "true" ]] && [[ -n "${EMBY_URL:-}" ]] && command -v emby_test_connection >/dev/null 2>&1 && emby_test_connection >/dev/null 2>&1
 }
 
-is_gemini_configured() {
-    [[ "$GEMINI_ENABLED" == "true" ]] && [[ -n "${GEMINI_API_KEY:-}" ]]
-}
-
 # Integration Configuration submenu
 integration_configuration_submenu() {
   while true; do
@@ -6679,7 +6432,6 @@ integration_configuration_submenu() {
       "1|Channels DVR Configuration"
       "2|Dispatcharr Configuration"
       "3|Emby Configuration"
-      "4|Gemini Configuration"
       "q|Back to Settings"
     )
     
@@ -6714,15 +6466,6 @@ integration_configuration_submenu() {
     else
       echo -e "Emby: ${YELLOW}Disabled${RESET}"
     fi
-
-    # Gemini status
-    if [[ "$GEMINI_ENABLED" == "true" ]] && [[ -n "${GEMINI_API_KEY:-}" ]]; then
-      echo -e "Gemini: ${GREEN}Enabled${RESET} (API Key set)"
-    elif [[ "$GEMINI_ENABLED" == "true" ]]; then
-      echo -e "Gemini: ${YELLOW}Enabled but API Key not set${RESET}"
-    else
-      echo -e "Gemini: ${YELLOW}Disabled${RESET}"
-    fi
     echo
     
     # Show menu options
@@ -6736,7 +6479,6 @@ integration_configuration_submenu() {
       1) configure_integration "Channels DVR" "CHANNELS" "false" "cdvr_test_connection" && pause_for_user ;;
       2) configure_integration "Dispatcharr" "DISPATCHARR" "true" "dispatcharr_test_connection" && pause_for_user ;;
       3) configure_integration "Emby" "EMBY" "true" "emby_test_connection" && pause_for_user ;;
-      4) configure_gemini_integration && pause_for_user ;;
       q|Q|"") break ;;
       *) show_invalid_menu_choice "Integration Configuration" "$choice" ;;
     esac
@@ -6862,81 +6604,14 @@ validate_cache_formats_on_startup() {
 # SUBMENU FUNCTIONS (Hybrid Architecture)
 # ============================================================================
 
-run_ai_powered_search() {
-    if ! check_integration_requirement "Gemini" "is_gemini_configured" "configure_gemini_integration" "AI-Powered Search"; then
-        return 1
-    fi
-
-    clear
-    echo -e "${BOLD}${CYAN}=== AI-Powered Search ===${RESET}\n"
-    echo -e "${BLUE}📍 Use natural language to search for stations.${RESET}"
-    echo -e "${CYAN}Examples: 'cnn in hd', 'uk news channels', 'local channels for 90210'${RESET}"
-    echo
-
-    local user_query
-    read -p "Enter your search query (or 'q' to return): " user_query
-
-    if [[ -z "$user_query" || "$user_query" == "q" ]]; then
-        return 0
-    fi
-
-    echo -e "\n${CYAN}🤖 Asking the AI to parse your query...${RESET}"
-    local ai_params
-    ai_params=$(gemini_ai_search_parser "$user_query")
-
-    if [[ $? -ne 0 ]]; then
-        echo -e "${RED}❌ AI search failed. Please try again.${RESET}"
-        pause_for_user
-        return 1
-    fi
-
-    # Extract parameters from the AI's response
-    local search_term=$(echo "$ai_params" | jq -r '.search_term // empty')
-    local quality=$(echo "$ai_params" | jq -r '.quality // empty')
-    local country=$(echo "$ai_params" | jq -r '.country // empty')
-
-    echo -e "${GREEN}✅ AI has interpreted your search as:${RESET}"
-    echo -e "   Search Term: ${YELLOW}${search_term:-'(not specified)'}${RESET}"
-    echo -e "   Quality: ${YELLOW}${quality:-'(not specified)'}${RESET}"
-    echo -e "   Country: ${YELLOW}${country:-'(not specified)'}${RESET}"
-    pause_for_user
-
-    # Temporarily override filters for this search
-    local old_filter_res="$FILTER_BY_RESOLUTION"
-    local old_res="$ENABLED_RESOLUTIONS"
-    local old_filter_country="$FILTER_BY_COUNTRY"
-    local old_countries="$ENABLED_COUNTRIES"
-
-    if [[ -n "$quality" ]]; then
-        FILTER_BY_RESOLUTION=true
-        ENABLED_RESOLUTIONS="$quality"
-    fi
-
-    if [[ -n "$country" ]]; then
-        FILTER_BY_COUNTRY=true
-        ENABLED_COUNTRIES="$country"
-    fi
-
-    # Run the standard search with AI-provided parameters
-    perform_search "$search_term"
-
-    # Restore original filters
-    FILTER_BY_RESOLUTION="$old_filter_res"
-    ENABLED_RESOLUTIONS="$old_res"
-    FILTER_BY_COUNTRY="$old_filter_country"
-    ENABLED_COUNTRIES="$old_countries"
-}
-
-
 # Search submenu - consolidates all search functionality
 search_submenu() {
   while true; do
     # Define search menu options
     search_options=(
       "1|Search Local Database"
-      "2|AI-Powered Search|requires Gemini"
-      "3|Direct API Search|requires Channels DVR"
-      "4|Reverse Station ID Lookup"
+      "2|Direct API Search|requires Channels DVR"
+      "3|Reverse Station ID Lookup"
       "q|Back to Main Menu"
     )
     
@@ -6957,9 +6632,8 @@ search_submenu() {
     
     case $choice in
       1) search_local_database ;;
-      2) run_ai_powered_search ;;
-      3) run_direct_api_search ;;
-      4) reverse_station_id_lookup_menu ;;
+      2) run_direct_api_search ;;
+      3) reverse_station_id_lookup_menu ;;
       q|Q|"") break ;;
       *) show_invalid_menu_choice "Search Menu" "$choice" ;;
     esac
