@@ -1,4 +1,6 @@
-# Global Station Search
+# Deprecated - Global Station Search
+
+This tool is discontinued and no longer updated as the functions are replaced using Channelidentifiarr https://github.com/egyptiangio/channelidentifiarr
 
 A comprehensive television station search tool that (optionally) integrates with Channels DVR and Dispatcharr to provide enhanced station discovery and automated Dispatcharr field population.
 
